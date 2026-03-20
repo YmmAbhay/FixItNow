@@ -12,7 +12,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { useEffect } from "react";
-import { StarRating, Modal } from "../../components/common/index";
+import { StarRating, Modal, ReviewList } from "../../components/common/index";
 import {
   api,
   fetchServiceCatalog,
@@ -30,30 +30,29 @@ const TIME_SLOTS = [
   "4:00 PM",
   "5:00 PM",
 ];
-const REVIEWS = [
-  {
-    id: 1,
-    name: "Priya N.",
-    rating: 5,
-    comment: "Excellent work! Very professional and completed on time.",
-    date: "2 days ago",
-  },
-  {
-    id: 2,
-    name: "Arun M.",
-    rating: 4,
-    comment: "Good service, arrived a bit late but the work quality was great.",
-    date: "1 week ago",
-  },
-  {
-    id: 3,
-    name: "Kavita S.",
-    rating: 5,
-    comment:
-      "Highly recommend! Fixed the issue quickly and explained everything.",
-    date: "2 weeks ago",
-  },
-];
+
+const formatReviewDate = (dateValue) => {
+  if (!dateValue) return "Recently";
+
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "Recently";
+
+  const diffMs = Date.now() - date.getTime();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const days = Math.floor(diffMs / dayMs);
+
+  if (days <= 0) return "Today";
+  if (days === 1) return "1 day ago";
+  if (days < 7) return `${days} days ago`;
+
+  const weeks = Math.floor(days / 7);
+  if (weeks === 1) return "1 week ago";
+  if (weeks < 5) return `${weeks} weeks ago`;
+
+  const months = Math.floor(days / 30);
+  if (months === 1) return "1 month ago";
+  return `${months} months ago`;
+};
 
 export const ServiceDetailPage = () => {
   const { id } = useParams();
@@ -61,7 +60,7 @@ export const ServiceDetailPage = () => {
   const { user } = useAuth();
   const [service, setService] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [providerReviews, setProviderReviews] = useState([]);
 
   useEffect(() => {
     const loadService = async () => {
@@ -71,11 +70,31 @@ export const ServiceDetailPage = () => {
 
         const res = await api.get(`/services/${id}`);
         const normalized = normalizeServiceCategoryFields(res.data, lookup);
-        
-        //  THE FIX: Capture the raw provider ID directly from the backend response!
-        normalized.exactProviderId = res.data.provider?.id || res.data.providerId || res.data.provider_id;
-        
+
+        // Capture the raw provider ID directly from the backend response
+        normalized.exactProviderId =
+          res.data.provider?.id || res.data.providerId || res.data.provider_id;
+
+        // 🔥 THE FIX: Extract nested provider data or use safe fallbacks so the UI is never blank!
+        normalized.providerName = res.data.provider?.name || res.data.providerName || "Service Provider";
+        // 🔥 Now it explicitly looks for the exact variable your DTO sends!
+        normalized.providerLocation = res.data.providerLocation || res.data.provider?.location || res.data.location || "Location not specified";
+        normalized.completedJobs = res.data.completedJobs || res.data.provider?.completedJobs || 0;
+        // 🔥 Check if the backend sent the service area, and format it nicely!
+        normalized.distance = res.data.serviceArea ? `Up to ${res.data.serviceArea} km` : "Local";
+
         setService(normalized);
+
+        if (normalized.exactProviderId) {
+          const reviewsRes = await api.get(
+            `/reviews/provider/${normalized.exactProviderId}`,
+          );
+          setProviderReviews(
+            Array.isArray(reviewsRes.data) ? reviewsRes.data : [],
+          );
+        } else {
+          setProviderReviews([]);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -96,29 +115,30 @@ export const ServiceDetailPage = () => {
     setBookingModal(true);
   };
 
-const confirmBooking = async () => {
+  const confirmBooking = async () => {
     try {
-      setLoading(true); 
+      setLoading(true);
 
       // 🔥 FIX 1: Only send what the new Backend DTO expects (plus the date!)
       const bookingPayload = {
         serviceId: service.id,
-        bookingDate: selectedDate, 
-        timeSlot: selectedSlot
+        bookingDate: selectedDate,
+        timeSlot: selectedSlot,
       };
 
       // 🔥 FIX 2: Removed "/create" to perfectly match the teammate's new Controller
-      const res = await api.post('/bookings', bookingPayload); 
+      const res = await api.post("/bookings", bookingPayload);
 
-      const notifications = JSON.parse(localStorage.getItem("notifications")) || [];
-      await api.post('/notifications/create', {
+      const notifications =
+        JSON.parse(localStorage.getItem("notifications")) || [];
+      await api.post("/notifications/create", {
         userId: service.exactProviderId, // Using the safely extracted ID
         bookingId: res.data.id,
         role: "provider",
         icon: "📅",
         text: `New booking request for ${service.category} from Customer #${user.id}`,
         viewed: false,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       });
       localStorage.setItem("notifications", JSON.stringify(notifications));
 
@@ -126,7 +146,6 @@ const confirmBooking = async () => {
       setTimeout(() => {
         navigate("/customer/bookings");
       }, 1500);
-
     } catch (err) {
       console.error("Booking failed:", err);
       alert("Failed to create booking.");
@@ -137,6 +156,13 @@ const confirmBooking = async () => {
   const today = new Date().toISOString().split("T")[0];
   const maxDate = new Date();
   maxDate.setDate(maxDate.getDate() + 30);
+
+  const computedReviewCount = providerReviews.length;
+  const computedAverageRating =
+    computedReviewCount > 0
+      ? providerReviews.reduce((sum, item) => sum + (item.rating || 0), 0) /
+        computedReviewCount
+      : Number(service?.rating || 0);
 
   if (loading) {
     return (
@@ -191,12 +217,12 @@ const confirmBooking = async () => {
 
                 <div className="flex items-center gap-4 mt-3 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <StarRating rating={service.rating} size="md" />
+                    <StarRating rating={computedAverageRating} size="md" />
                     <span className="font-bold text-white">
-                      {service.rating}
+                      {computedAverageRating.toFixed(1)}
                     </span>
                     <span className="text-dark-400 text-sm">
-                      ({service.reviews} reviews)
+                      ({computedReviewCount || service.reviews || 0} reviews)
                     </span>
                   </div>
                   <span className="flex items-center gap-1 text-dark-400 text-sm">
@@ -230,13 +256,17 @@ const confirmBooking = async () => {
                     {service.providerLocation}
                   </p>
                   <p className="text-dark-500 text-xs mt-0.5">
-                    Member since 2021
+                    Member since {service.memberSince}
                   </p>
                 </div>
               </div>
               <Link
                 to={`/customer/chat`}
-                state={{ contactId: service.exactProviderId, contactName: service.providerName, contactRole: 'Provider' }}
+                state={{
+                  contactId: service.exactProviderId,
+                  contactName: service.providerName,
+                  contactRole: "Provider",
+                }}
                 className="btn-secondary flex items-center gap-2 py-2 text-sm"
               >
                 <MessageCircle className="w-4 h-4" /> Message
@@ -257,7 +287,7 @@ const confirmBooking = async () => {
                 },
                 {
                   label: "Rating",
-                  value: `${service.rating}/5`,
+                  value: `${computedAverageRating.toFixed(1)}/5`,
                   icon: (
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                   ),
@@ -280,32 +310,7 @@ const confirmBooking = async () => {
             <h3 className="font-display font-semibold text-lg text-white mb-4">
               Customer Reviews
             </h3>
-            <div className="space-y-4">
-              {REVIEWS.map((rev) => (
-                <div
-                  key={rev.id}
-                  className="pb-4 border-b border-dark-700 last:border-0 last:pb-0"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-brand-500/20 rounded-full flex items-center justify-center text-sm font-bold text-brand-400">
-                        {rev.name[0]}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-white">
-                          {rev.name}
-                        </p>
-                        <p className="text-xs text-dark-500">{rev.date}</p>
-                      </div>
-                    </div>
-                    <StarRating rating={rev.rating} size="sm" />
-                  </div>
-                  <p className="text-dark-300 text-sm leading-relaxed">
-                    {rev.comment}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <ReviewList providerId={service.exactProviderId} />
           </div>
         </div>
 
@@ -395,23 +400,31 @@ const confirmBooking = async () => {
       <Modal
         isOpen={bookingModal}
         onClose={() => !confirmed && setBookingModal(false)}
-        title="Confirm Your Booking"
+        title={confirmed ? "Request Status" : "Confirm Your Request"}
         size="md"
       >
         {confirmed ? (
-          <div className="text-center py-6">
-            <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-green-400" />
+          <div className="text-center py-8 animate-fade-in">
+            <div className="relative w-20 h-20 mx-auto mb-5">
+              <div className="absolute inset-0 bg-brand-500/20 rounded-full animate-ping"></div>
+              <div className="relative w-20 h-20 bg-brand-500/20 rounded-full flex items-center justify-center border-2 border-brand-500/50">
+                <Clock className="w-10 h-10 text-brand-400" /> {/* Make sure to import Clock at the top if not already! */}
+              </div>
             </div>
-            <h3 className="font-display font-bold text-xl text-white mb-2">
-              Booking Confirmed!
+            <h3 className="font-display font-bold text-2xl text-white mb-2">
+              Request Sent!
             </h3>
-            <p className="text-dark-400 text-sm">
+            <p className="text-dark-400 text-sm max-w-xs mx-auto leading-relaxed">
+              We've notified <span className="text-white font-medium">{service.providerName}</span>. 
+              You will be alerted as soon as they accept your booking.
+            </p>
+            <p className="text-dark-500 text-xs mt-6">
               Redirecting to your bookings...
             </p>
           </div>
         ) : (
           <div className="space-y-4">
+            {/* ... Keep the existing pre-confirmation UI the same ... */}
             <div className="bg-dark-900/50 rounded-xl p-4 space-y-3">
               {[
                 { label: "Service", value: service.category },
@@ -436,9 +449,9 @@ const confirmBooking = async () => {
               <button
                 onClick={confirmBooking}
                 className="btn-primary flex-1 disabled:opacity-50"
-                disabled={isSubmitting}
+                disabled={loading}
               >
-                {isSubmitting ? "Processing..." : "Pay & Confirm"}
+                {loading ? "Sending..." : "Send Request"}
               </button>
             </div>
           </div>
