@@ -828,9 +828,9 @@ export const AdminDisputesPage = () => {
                     {/* Meta info row */}
                     <p className="text-dark-400 text-sm mt-1">
                       Report #{d.id}
-                      {d.targetId   ? ` Â· ${d.targetType || 'Booking'} #${d.targetId}` : ''}
-                      {d.reportedBy ? ` Â· Reported by User #${d.reportedBy}` : ''}
-                      {d.createdAt  ? ` Â· ${new Date(d.createdAt).toLocaleDateString()}` : ''}
+                      {d.targetId   ? ` | ${d.targetType || 'Booking'} #${d.targetId}` : ''}
+                      {d.reportedBy ? ` | Reported by User #${d.reportedBy}` : ''}
+                      {d.createdAt  ? ` | ${new Date(d.createdAt).toLocaleDateString()}` : ''}
                     </p>
                   </div>
                 </div>
