@@ -384,6 +384,17 @@ export const ServicesPage = () => {
                 Clear All
               </button>
             </div>
+
+            {/* CLEAR ALL BUTTON */}
+            <div className="flex justify-end h-10">
+              <button
+                onClick={handleClearFilters}
+                className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold text-dark-400 hover:text-red-400 transition-colors bg-dark-900/50 hover:bg-red-500/10 rounded-lg border border-dark-700 hover:border-red-500/50 w-full sm:w-auto"
+              >
+                <X className="w-3 h-3" />
+                Clear All
+              </button>
+            </div>
           </div>
         </div>
       )}

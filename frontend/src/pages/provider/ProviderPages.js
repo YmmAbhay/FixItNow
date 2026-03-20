@@ -373,6 +373,33 @@ export const ProviderServicesPage = () => {
           </div>
         )}
       </Modal>
+
+      <Modal
+        isOpen={!!selectedService}
+        onClose={() => setSelectedService(null)}
+        title="Service Details"
+        size="sm"
+      >
+        {selectedService && (
+          <div className="space-y-2">
+            <p>
+              <strong>Category:</strong> {selectedService.category}
+            </p>
+            <p>
+              <strong>Subcategory:</strong> {selectedService.subcategory}
+            </p>
+            <p>
+              <strong>Description:</strong> {selectedService.description}
+            </p>
+            <p>
+              <strong>Price:</strong> ₹{selectedService.price}
+            </p>
+            <p>
+              <strong>Status:</strong> {selectedService.status}
+            </p>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
