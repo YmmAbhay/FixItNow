@@ -3,7 +3,10 @@ package com.fixitnow.backend.entity;
 import jakarta.persistence.*;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+<<<<<<< milestone-3
+=======
 import com.fixitnow.backend.entity.ProviderProfile;
+>>>>>>> main
 
 @Entity
 @Table(name = "users")
@@ -28,6 +31,15 @@ public class User {
     @JsonIgnore
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
     private ProviderProfile providerProfile;
+<<<<<<< milestone-3
+
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+=======
+>>>>>>> main
 
     public Long getId() {
         return id;
@@ -76,4 +88,23 @@ public class User {
     public ProviderProfile getProviderProfile() {
         return providerProfile;
     }
+<<<<<<< milestone-3
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+=======
+>>>>>>> main
 }

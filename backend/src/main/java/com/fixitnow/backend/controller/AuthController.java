@@ -11,6 +11,7 @@ import com.fixitnow.backend.repository.ProviderProfileRepository;
 import com.fixitnow.backend.security.JwtUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -34,6 +35,17 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
 
+<<<<<<< milestone-3
+        String normalizedEmail = request.getEmail() == null
+                ? null
+                : request.getEmail().trim().toLowerCase();
+
+        if (normalizedEmail == null || normalizedEmail.isBlank()) {
+            return ResponseEntity.badRequest().body("Email is required");
+        }
+
+=======
+>>>>>>> main
         // Check if role is missing
         if (request.getRole() == null) {
             return ResponseEntity.badRequest().body("Role is required");
@@ -48,16 +60,28 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Passwords do not match");
         }
 
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+        if (userRepository.findByEmailIgnoreCase(normalizedEmail).isPresent()) {
             return ResponseEntity.badRequest().body("Email already exists");
         }
 
+<<<<<<< milestone-3
+        Role parsedRole;
+        try {
+            parsedRole = Role.valueOf(request.getRole().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body("Invalid role");
+        }
+
+=======
+>>>>>>> main
         User user = new User();
         user.setName(request.getName());
-        user.setEmail(request.getEmail());
+        user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setLocation(request.getLocation());
-        user.setRole(Role.valueOf(request.getRole().toUpperCase()));
+        user.setRole(parsedRole);
+        user.setLatitude(request.getLatitude());
+        user.setLongitude(request.getLongitude());
 
         User savedUser = userRepository.save(user);
 
@@ -91,22 +115,43 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+<<<<<<< milestone-3
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+=======
     public AuthResponse login(@RequestBody LoginRequest loginRequest) {
+>>>>>>> main
 
-        User user = userRepository.findByEmail(loginRequest.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String normalizedEmail = loginRequest.getEmail() == null
+                ? null
+                : loginRequest.getEmail().trim().toLowerCase();
+
+        if (normalizedEmail == null || normalizedEmail.isBlank()
+                || loginRequest.getPassword() == null || loginRequest.getPassword().isBlank()) {
+            return ResponseEntity.badRequest().body("Email and password are required");
+        }
+
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not found");
+        }
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid Password");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid password");
         }
+
         if (user.getRole() == Role.PROVIDER) {
 
             ProviderProfile profile = providerProfileRepository
                     .findByUser(user)
-                    .orElseThrow(() -> new RuntimeException("Provider profile not found"));
+                    .orElse(null);
+
+            if (profile == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Provider profile not found");
+            }
 
             if (!"APPROVED".equals(profile.getApprovalStatus())) {
-                throw new RuntimeException("Your account is not approved by admin yet");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Your account is not approved by admin yet");
             }
         }
 
@@ -114,12 +159,21 @@ public class AuthController {
                 user.getEmail(),
                 user.getRole().name());
 
+<<<<<<< milestone-3
+        return ResponseEntity.ok(
+            new AuthResponse(
+=======
         return new AuthResponse(
+>>>>>>> main
                 token,
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
+<<<<<<< milestone-3
+                user.getRole().name().toLowerCase()));
+=======
                 user.getRole().name().toLowerCase());
+>>>>>>> main
 
     }
 }
