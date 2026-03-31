@@ -20,6 +20,9 @@ public class ServiceResponse {
     private String serviceArea;
     private String memberSince;
     private long completedJobs;
+    private boolean verified;
+    private double rating;
+    private long reviews;
 
     public ServiceResponse(ServiceEntity service) {
         this.id = service.getId();
@@ -37,12 +40,15 @@ public class ServiceResponse {
             this.providerLat = service.getProvider().getProviderProfile().getLatitude();
             this.providerLng = service.getProvider().getProviderProfile().getLongitude();
             this.serviceArea = service.getProvider().getProviderProfile().getServiceArea();
+                this.verified = "APPROVED".equalsIgnoreCase(service.getStatus());
             
             if (service.getCreatedAt() != null) {
                 this.memberSince = String.valueOf(service.getCreatedAt().getYear());
             } else {
                 this.memberSince = "2024";
             }
+        } else {
+            this.verified = "APPROVED".equalsIgnoreCase(service.getStatus());
         }
     }
 
@@ -66,4 +72,11 @@ public class ServiceResponse {
     public long getCompletedJobs() { return completedJobs; }
     public String getServiceArea() { return serviceArea; }
     public String getMemberSince() { return memberSince; }
+    public boolean isVerified() { return verified; }
+    public double getRating() { return rating; }
+    public long getReviews() { return reviews; }
+
+    public void setVerified(boolean verified) { this.verified = verified; }
+    public void setRating(double rating) { this.rating = rating; }
+    public void setReviews(long reviews) { this.reviews = reviews; }
 }

@@ -28,6 +28,9 @@ public class ProviderProfile {
 
     private String approvalStatus;
 
+    @Column(name = "is_online")
+    private Boolean online = true;
+
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -92,6 +95,14 @@ public class ProviderProfile {
 
     public void setApprovalStatus(String approvalStatus) {
         this.approvalStatus = approvalStatus;
+    }
+
+    public Boolean getOnline() {
+        return online;
+    }
+
+    public void setOnline(Boolean online) {
+        this.online = online;
     }
 
     public User getUser() {

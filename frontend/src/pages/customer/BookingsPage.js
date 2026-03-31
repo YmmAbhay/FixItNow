@@ -51,6 +51,7 @@ export const CustomerBookingsPage = () => {
     { id: "confirmed", label: "Confirmed" },
     { id: "completed", label: "Completed" },
     { id: "cancelled", label: "Cancelled" },
+    { id: "rejected", label: "Rejected" },
   ];
 
   useEffect(() => {
@@ -113,10 +114,25 @@ export const CustomerBookingsPage = () => {
           return acc;
         }, {});
 
+        let reportedMap = {};
+        try {
+          const reportsRes = await api.get("/reports/mine?targetType=booking");
+          const reports = Array.isArray(reportsRes.data) ? reportsRes.data : [];
+          reportedMap = reports.reduce((acc, report) => {
+            if (report?.targetId != null) {
+              acc[report.targetId] = true;
+            }
+            return acc;
+          }, {});
+        } catch (reportErr) {
+          console.warn("Failed to load reported booking state", reportErr);
+        }
+
         if (isMounted) {
           formatted.sort((a, b) => new Date(b.date) - new Date(a.date));
           setBookings(formatted);
           setSubmitted(submittedMap);
+          setReportedBookings(reportedMap);
           
           // 🔥 CHECK LOCAL STORAGE HERE
           const paidData = JSON.parse(localStorage.getItem("paidBookings")) || {};

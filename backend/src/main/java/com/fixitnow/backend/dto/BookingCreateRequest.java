@@ -4,9 +4,10 @@ public class BookingCreateRequest {
 
     private Long serviceId;
     private String timeSlot;
-    
-    
     private String bookingDate;
+    private String customerLocation;
+    private Double customerLat;
+    private Double customerLng;
 
     public Long getServiceId() {
         return serviceId;
@@ -31,5 +32,29 @@ public class BookingCreateRequest {
 
     public void setBookingDate(String bookingDate) {
         this.bookingDate = bookingDate;
+    }
+
+    public String getCustomerLocation() {
+        return customerLocation;
+    }
+
+    public void setCustomerLocation(String customerLocation) {
+        this.customerLocation = customerLocation;
+    }
+
+    public Double getCustomerLat() {
+        return customerLat;
+    }
+
+    public void setCustomerLat(Double customerLat) {
+        this.customerLat = customerLat;
+    }
+
+    public Double getCustomerLng() {
+        return customerLng;
+    }
+
+    public void setCustomerLng(Double customerLng) {
+        this.customerLng = customerLng;
     }
 }

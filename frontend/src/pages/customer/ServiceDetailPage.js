@@ -10,6 +10,8 @@ import {
   CheckCircle,
   Calendar,
   MessageCircle,
+  Navigation,
+  Loader2,
 } from "lucide-react";
 import { useEffect } from "react";
 import { StarRating, Modal, ReviewList } from "../../components/common/index";
@@ -107,12 +109,52 @@ export const ServiceDetailPage = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
   const [notes, setNotes] = useState("");
+  const [bookingLocation, setBookingLocation] = useState(user?.location || "");
+  const [bookingLat, setBookingLat] = useState(user?.latitude ?? null);
+  const [bookingLng, setBookingLng] = useState(user?.longitude ?? null);
+  const [locatingBookingAddress, setLocatingBookingAddress] = useState(false);
+  const [bookingLocationError, setBookingLocationError] = useState("");
   const [bookingModal, setBookingModal] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
   const handleBook = () => {
-    if (!selectedDate || !selectedSlot) return;
+    if (!selectedDate || !selectedSlot || !bookingLocation.trim()) return;
     setBookingModal(true);
+  };
+
+  const handleUseCurrentLocation = () => {
+    setBookingLocationError("");
+    if (!("geolocation" in navigator)) {
+      setBookingLocationError("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setLocatingBookingAddress(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setBookingLat(lat);
+        setBookingLng(lng);
+
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+          );
+          const data = await res.json();
+          const resolvedAddress = data?.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          setBookingLocation(resolvedAddress);
+        } catch {
+          setBookingLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        } finally {
+          setLocatingBookingAddress(false);
+        }
+      },
+      () => {
+        setBookingLocationError("Please allow location access to autofill your service address.");
+        setLocatingBookingAddress(false);
+      },
+    );
   };
 
   const confirmBooking = async () => {
@@ -124,23 +166,13 @@ export const ServiceDetailPage = () => {
         serviceId: service.id,
         bookingDate: selectedDate,
         timeSlot: selectedSlot,
+        customerLocation: bookingLocation.trim(),
+        customerLat: bookingLat,
+        customerLng: bookingLng,
       };
 
       // Endpoint aligns with current controller mapping.
-      const res = await api.post("/bookings", bookingPayload);
-
-      const notifications =
-        JSON.parse(localStorage.getItem("notifications")) || [];
-      await api.post("/notifications/create", {
-        userId: service.exactProviderId, // Using the safely extracted ID
-        bookingId: res.data.id,
-        role: "provider",
-        icon: "📅",
-        text: `New booking request for ${service.category} from Customer #${user.id}`,
-        viewed: false,
-        createdAt: Date.now(),
-      });
-      localStorage.setItem("notifications", JSON.stringify(notifications));
+      await api.post("/bookings", bookingPayload);
 
       setConfirmed(true);
       setTimeout(() => {
@@ -214,7 +246,6 @@ export const ServiceDetailPage = () => {
                     </span>
                   )}
                 </div>
-
                 <div className="flex items-center gap-4 mt-3 flex-wrap">
                   <div className="flex items-center gap-2">
                     <StarRating rating={computedAverageRating} size="md" />
@@ -379,9 +410,45 @@ export const ServiceDetailPage = () => {
                 />
               </div>
 
+              {/* Service Location */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-dark-300 flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4" /> Service Location
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleUseCurrentLocation}
+                    disabled={locatingBookingAddress}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-dark-600 text-brand-400 hover:border-brand-500 hover:text-brand-300 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {locatingBookingAddress ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Navigation className="w-3.5 h-3.5" />
+                    )}
+                    Use Current Location
+                  </button>
+                </div>
+                <textarea
+                  rows={2}
+                  placeholder="Enter exact address / landmark where provider should come"
+                  value={bookingLocation}
+                  onChange={(e) => {
+                    setBookingLocation(e.target.value);
+                    setBookingLat(null);
+                    setBookingLng(null);
+                  }}
+                  className="input-field resize-none text-sm"
+                />
+                {bookingLocationError && (
+                  <p className="text-red-400 text-xs mt-1.5">{bookingLocationError}</p>
+                )}
+              </div>
+
               <button
                 onClick={handleBook}
-                disabled={!selectedDate || !selectedSlot}
+                disabled={!selectedDate || !selectedSlot || !bookingLocation.trim()}
                 className="btn-primary w-full disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Confirm Booking
@@ -431,11 +498,17 @@ export const ServiceDetailPage = () => {
                 { label: "Provider", value: service.providerName },
                 { label: "Date", value: selectedDate },
                 { label: "Time", value: selectedSlot },
+                { label: "Service Location", value: bookingLocation },
                 { label: "Amount", value: `₹${service.price}` },
               ].map((item) => (
-                <div key={item.label} className="flex justify-between text-sm">
-                  <span className="text-dark-400">{item.label}</span>
-                  <span className="text-white font-medium">{item.value}</span>
+                <div
+                  key={item.label}
+                  className="grid grid-cols-[110px_minmax(0,1fr)] gap-3 text-sm"
+                >
+                  <span className="text-dark-400 leading-5">{item.label}</span>
+                  <span className="text-white font-medium leading-5 break-words text-right">
+                    {item.value}
+                  </span>
                 </div>
               ))}
             </div>

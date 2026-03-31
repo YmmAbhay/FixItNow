@@ -42,6 +42,8 @@ export const ProviderDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
+  const [updatingAvailability, setUpdatingAvailability] = useState(false);
 
   const buildLocalIsoDate = (dateObj) => {
     const year = dateObj.getFullYear();
@@ -56,6 +58,13 @@ export const ProviderDashboard = () => {
 
       try {
         setLoading(true);
+
+        try {
+          const availabilityRes = await api.get("/provider/availability");
+          setIsOnline(Boolean(availabilityRes.data?.online));
+        } catch (availabilityErr) {
+          console.warn("Could not load provider availability", availabilityErr);
+        }
 
         const bookingsRes = await api.get("/bookings/provider");
         const rawBookings = Array.isArray(bookingsRes.data)
@@ -108,6 +117,20 @@ export const ProviderDashboard = () => {
     loadDashboard();
   }, [user]);
 
+  const handleToggleAvailability = async () => {
+    if (updatingAvailability) return;
+    const next = !isOnline;
+    setUpdatingAvailability(true);
+    try {
+      await api.put(`/provider/availability?online=${next}`);
+      setIsOnline(next);
+    } catch (err) {
+      console.error("Failed to update provider availability", err);
+    } finally {
+      setUpdatingAvailability(false);
+    }
+  };
+
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
@@ -119,6 +142,15 @@ export const ProviderDashboard = () => {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
+    const completedAll = bookings.filter(
+      (booking) => booking.status === "completed",
+    );
+
+    const totalEarnings = completedAll.reduce(
+      (sum, booking) => sum + Number(booking.price || 0),
+      0,
+    );
+
     const completedThisMonth = bookings.filter((booking) => {
       if (booking.status !== "completed" || !booking.date) return false;
       const bookingDate = new Date(booking.date);
@@ -128,11 +160,6 @@ export const ProviderDashboard = () => {
         bookingDate.getFullYear() === currentYear
       );
     });
-
-    const monthlyEarnings = completedThisMonth.reduce(
-      (sum, booking) => sum + Number(booking.price || 0),
-      0,
-    );
 
     const avgRating =
       reviews.length > 0
@@ -145,7 +172,7 @@ export const ProviderDashboard = () => {
         : "--";
 
     return {
-      monthlyEarnings,
+      totalEarnings,
       completedThisMonth: completedThisMonth.length,
       newRequests: bookings.filter((booking) => booking.status === "pending")
         .length,
@@ -181,11 +208,21 @@ export const ProviderDashboard = () => {
         <div className="flex items-center gap-3 bg-dark-800 border border-dark-700 rounded-xl px-4 py-3">
           <div>
             <p className="text-xs text-dark-400">Availability</p>
-            <p className="text-sm font-semibold text-green-400">Active</p>
+            <p className={`text-sm font-semibold ${isOnline ? "text-green-400" : "text-red-400"}`}>
+              {isOnline ? "Online" : "Offline"}
+            </p>
           </div>
-          <div className="relative w-12 h-6 bg-green-500 rounded-full cursor-pointer">
-            <span className="absolute top-1 right-1 w-4 h-4 bg-white rounded-full" />
-          </div>
+          <button
+            type="button"
+            onClick={handleToggleAvailability}
+            disabled={updatingAvailability}
+            className={`relative w-12 h-6 rounded-full transition-colors ${isOnline ? "bg-green-500" : "bg-dark-600"} ${updatingAvailability ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+            aria-label="Toggle availability"
+          >
+            <span
+              className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isOnline ? "right-1" : "left-1"}`}
+            />
+          </button>
         </div>
       </div>
 
@@ -194,8 +231,8 @@ export const ProviderDashboard = () => {
         <StatCard
           icon={<DollarSign className="w-5 h-5" />}
           label="Total Earnings"
-          value={`₹${stats.monthlyEarnings.toLocaleString("en-IN")}`}
-          sub="This month"
+          value={`₹${stats.totalEarnings.toLocaleString("en-IN")}`}
+          sub="From completed bookings"
           color="green"
         />
         <StatCard
@@ -346,7 +383,7 @@ export const ProviderDashboard = () => {
           <div className="bg-dark-900/50 rounded-xl p-4">
             <p className="text-dark-400 text-xs">Revenue</p>
             <p className="text-brand-400 font-bold text-xl">
-              ₹{stats.monthlyEarnings.toLocaleString("en-IN")}
+              ₹{stats.totalEarnings.toLocaleString("en-IN")}
             </p>
           </div>
           <div className="bg-dark-900/50 rounded-xl p-4">

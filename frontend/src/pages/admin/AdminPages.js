@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Search,
   Filter,
@@ -10,6 +11,7 @@ import {
   Download,
   XCircle,
   Loader2,
+  MessageCircle,
 } from "lucide-react";
 import { Avatar, SectionHeader, Modal } from "../../components/common/index";
 import { api } from "../../utils/api";
@@ -843,6 +845,24 @@ export const AdminDisputesPage = () => {
                     >
                       {isServiceSuspending ? "Suspending service..." : isServiceSuspended ? "Service Suspended" : "Suspend Service"}
                     </button>
+                    {!!d.customerId && (
+                      <Link
+                        to="/admin/chat"
+                        state={{ contactId: d.customerId, contactName: d.customerName || "Customer", contactRole: "customer" }}
+                        className="py-2 px-3 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 text-sm font-medium transition-all inline-flex items-center gap-1.5"
+                      >
+                        <MessageCircle className="w-4 h-4" /> Chat Customer
+                      </Link>
+                    )}
+                    {!!d.providerId && (
+                      <Link
+                        to="/admin/chat"
+                        state={{ contactId: d.providerId, contactName: d.providerName || "Provider", contactRole: "provider" }}
+                        className="py-2 px-3 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 text-sm font-medium transition-all inline-flex items-center gap-1.5"
+                      >
+                        <MessageCircle className="w-4 h-4" /> Chat Provider
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>
@@ -892,6 +912,24 @@ export const AdminDisputesPage = () => {
             </div>
 
             <div className="flex gap-2 flex-wrap justify-end">
+              {!!selectedDispute.customerId && (
+                <Link
+                  to="/admin/chat"
+                  state={{ contactId: selectedDispute.customerId, contactName: selectedDispute.customerName || "Customer", contactRole: "customer" }}
+                  className="py-2 px-3 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 text-sm font-medium transition-all inline-flex items-center gap-1.5"
+                >
+                  <MessageCircle className="w-4 h-4" /> Chat Customer
+                </Link>
+              )}
+              {!!selectedDispute.providerId && (
+                <Link
+                  to="/admin/chat"
+                  state={{ contactId: selectedDispute.providerId, contactName: selectedDispute.providerName || "Provider", contactRole: "provider" }}
+                  className="py-2 px-3 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 text-sm font-medium transition-all inline-flex items-center gap-1.5"
+                >
+                  <MessageCircle className="w-4 h-4" /> Chat Provider
+                </Link>
+              )}
               <button
                 onClick={() => handleResolve(selectedDispute.id)}
                 disabled={!!actionLoading[selectedDispute.id]}

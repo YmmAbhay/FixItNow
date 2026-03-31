@@ -232,15 +232,24 @@ export const AdminDashboard = () => {
         }));
         setVerifications(formattedVerifications);
 
-        // Process recent users
-        const formattedUsers = usersData.slice(0, 10).map(user => ({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role?.toLowerCase() || 'customer',
-          joined: formatDateSafe(user.createdAt || user.joinedAt),
-          status: user.active ? 'active' : 'inactive',
-        }));
+        // Process recent users: newest first, then keep only top 10.
+        const formattedUsers = usersData
+          .map((user) => {
+            const joinedRaw = user.createdAt || user.joinedAt;
+            const joinedTs = joinedRaw ? new Date(joinedRaw).getTime() : 0;
+            return {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              role: user.role?.toLowerCase() || 'customer',
+              joined: formatDateSafe(joinedRaw),
+              joinedTs: Number.isNaN(joinedTs) ? 0 : joinedTs,
+              status: user.active ? 'active' : 'inactive',
+            };
+          })
+          .sort((a, b) => b.joinedTs - a.joinedTs)
+          .slice(0, 10)
+          .map(({ joinedTs, ...user }) => user);
         setRecentUsers(formattedUsers);
 
       } catch (err) {
@@ -571,7 +580,18 @@ export const AdminDashboard = () => {
 
       {/* Recent Users */}
       <div>
-        <SectionHeader title="Recently Joined Users" />
+        <SectionHeader
+          title="Recently Joined Users"
+          subtitle="Latest 10 users"
+          action={
+            <button
+              onClick={() => navigate('/admin/users')}
+              className="px-3 py-1.5 rounded-lg bg-dark-700 hover:bg-dark-600 text-dark-200 text-sm font-medium border border-dark-600 transition-colors"
+            >
+              View More
+            </button>
+          }
+        />
         <div className="bg-dark-800 border border-dark-700 rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

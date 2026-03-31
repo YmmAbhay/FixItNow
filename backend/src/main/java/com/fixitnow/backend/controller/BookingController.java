@@ -59,4 +59,9 @@ public class BookingController {
     public BookingResponse completeBooking(@PathVariable Long id, Principal principal) {
         return bookingService.completeBooking(id, principal);
     }
+
+    @PutMapping("/{id}/payment")
+    public BookingResponse notifyPayment(@PathVariable Long id, Principal principal) {
+        return bookingService.notifyPayment(id, principal);
+    }
 }

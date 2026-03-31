@@ -8,6 +8,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import com.fixitnow.backend.repository.UserRepository;
+import com.fixitnow.backend.service.NotificationService;
 import com.fixitnow.backend.entity.User;
 import com.fixitnow.backend.entity.Role;
 import java.util.Map;
@@ -27,6 +28,9 @@ public class ChatController {
 
     @Autowired
     private MessageRepository messageRepository;
+
+    @Autowired
+    private NotificationService notificationService;
 
     // ─── 1. REAL-TIME WEBSOCKET ROUTER ───────────────────────────────────────
     // React will send messages to "/app/chat"
@@ -53,6 +57,29 @@ public class ChatController {
 
             for (Long targetId : targets) {
                 messagingTemplate.convertAndSend("/topic/messages/" + targetId, savedMessage);
+
+                if (!targetId.equals(savedMessage.getSenderId())) {
+                    User targetUser = userRepository.findById(targetId).orElse(null);
+                    String targetRole = "customer";
+                    String targetPath = "/customer/chat";
+                    if (targetUser != null && targetUser.getRole() == Role.PROVIDER) {
+                        targetRole = "provider";
+                        targetPath = "/provider/chat";
+                    } else if (targetUser != null && targetUser.getRole() == Role.ADMIN) {
+                        targetRole = "admin";
+                        targetPath = "/admin/chat";
+                    }
+
+                    String senderName = sender != null && sender.getName() != null ? sender.getName() : "Someone";
+                    notificationService.notifyUser(
+                            targetId,
+                            null,
+                            targetRole,
+                            "💬",
+                            "New message from " + senderName,
+                            NotificationService.EVENT_CHAT,
+                            targetPath);
+                }
             }
     }
 

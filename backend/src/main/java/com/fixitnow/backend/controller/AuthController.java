@@ -9,6 +9,7 @@ import com.fixitnow.backend.entity.User;
 import com.fixitnow.backend.repository.UserRepository;
 import com.fixitnow.backend.repository.ProviderProfileRepository;
 import com.fixitnow.backend.security.JwtUtil;
+import com.fixitnow.backend.service.NotificationService;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -31,6 +32,9 @@ public class AuthController {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private NotificationService notificationService;
 
     private AuthResponse buildAuthResponse(User user, ProviderProfile profile) {
         boolean active = !Boolean.FALSE.equals(user.getActive());
@@ -114,6 +118,7 @@ public class AuthController {
             profile.setLatitude(request.getLatitude());
             profile.setLongitude(request.getLongitude());
             profile.setApprovalStatus("PENDING");
+            profile.setOnline(true);
             profile.setUser(savedUser);
 
             providerProfileRepository.save(profile);
@@ -122,6 +127,22 @@ public class AuthController {
         ProviderProfile savedProfile = null;
         if (savedUser.getRole() == Role.PROVIDER) {
             savedProfile = providerProfileRepository.findByUser(savedUser).orElse(null);
+
+            notificationService.notifyUser(
+                savedUser.getId(),
+                null,
+                "provider",
+                "📝",
+                "Your provider profile has been submitted and is pending admin approval.",
+                NotificationService.EVENT_SYSTEM,
+                "/provider/dashboard");
+
+            notificationService.notifyAdmins(
+                null,
+                "🆕",
+                "New provider registration from " + savedUser.getName() + " is waiting for approval.",
+                NotificationService.EVENT_SYSTEM,
+                "/admin/pending-providers");
         }
 
         return ResponseEntity.ok(buildAuthResponse(savedUser, savedProfile));

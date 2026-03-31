@@ -121,7 +121,14 @@ Delivered in repository:
 - Service moderation (suspend/restore)
 - Detailed dispute management with resolve and dismiss actions
 - Escalation actions from disputes: suspend provider and suspend service
+- Dispute-to-chat shortcuts for admin (direct chat with customer/provider)
 - Admin analytics dashboards with operational metrics
+- Recently Joined Users widget fixed to show newest users first and capped to latest 10 with View More to Users page
+- Centralized backend notification service with role-aware routing and preference-aware delivery
+- Notification events wired for booking lifecycle, provider registration/approval, chat, reports, and payment updates
+- Provider online/offline availability toggle; customer service discovery now hides offline providers
+- Duplicate booking-issue report prevention and persistent issue-reported state after refresh
+- User settings backend APIs (profile, notification preferences, password) integrated with frontend settings UI
 
 Pending or not formally completed:
 
@@ -137,14 +144,17 @@ Pending or not formally completed:
 - Service browse, search, and filtering
 - Service detail pages and booking initiation
 - Booking tracking and status updates
+- Booking location capture (manual/current geolocation) persisted and visible to provider
 - Payment flow for completed jobs
 - Reviews and ratings submission
+- Report issue workflow with persistent reported state
 - Chat with providers and admin support
 - Profile/settings management
 
 ### Provider
 
 - Dashboard with earnings and activity indicators
+- Online/offline availability toggle to control marketplace visibility
 - Service CRUD management
 - Booking queue with action controls
 - Completion flow triggering customer payment
@@ -160,7 +170,16 @@ Pending or not formally completed:
 - Service moderation and status controls
 - Dispute management with enriched detail view
 - Dispute action set: resolve, dismiss, suspend provider, suspend service
+- Direct dispute chat launch to customer/provider
 - Messaging with customers and providers
+
+## Notifications and Availability (Current Behavior)
+
+- Notifications are created server-side for key events and delivered per-user.
+- Notification preferences are respected (booking/chat/promotions), with safe defaults for legacy users.
+- Provider availability is now explicit:
+	- Online providers appear in customer service listing and nearby search.
+	- Offline providers are hidden from customer discovery until they go online again.
 
 ### AI Assistant
 

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Send, Search, ArrowLeft, MessageCircle } from 'lucide-react';
 import { api } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -8,6 +9,7 @@ import { Stomp } from '@stomp/stompjs';
 
 export const AdminChatPage = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const normalizeId = (value) => Number(value);
   // 🔥 FIXED: Use dynamic WebSocket URL like ChatPage does
   const wsBaseUrl = api.defaults.baseURL?.replace(/\/api\/?$/, '') || 'http://localhost:8080';
@@ -18,6 +20,10 @@ export const AdminChatPage = () => {
   const [input, setInput]               = useState('');
   const [search, setSearch]             = useState('');
   const [showConvList, setShowConvList] = useState(true);
+
+  const preselectedContactId = Number(location.state?.contactId);
+  const preselectedContactName = location.state?.contactName;
+  const preselectedContactRole = location.state?.contactRole;
 
   const stompClientRef  = useRef(null);
   const activeConvIdRef = useRef(null);
@@ -101,6 +107,30 @@ export const AdminChatPage = () => {
     
     loadAllContacts();
   }, [user]);
+
+  useEffect(() => {
+    if (!preselectedContactId || contacts.length === 0) return;
+
+    const existing = contacts.find((c) => normalizeId(c.id) === normalizeId(preselectedContactId));
+    if (existing) {
+      setActiveConv(existing);
+      setShowConvList(false);
+      return;
+    }
+
+    const injected = {
+      id: preselectedContactId,
+      name: preselectedContactName || `User #${preselectedContactId}`,
+      role: preselectedContactRole || 'user',
+      lastMsg: 'Tap to chat',
+      unread: 0,
+      online: true,
+      hasHistory: true,
+    };
+    setContacts((prev) => [injected, ...prev]);
+    setActiveConv(injected);
+    setShowConvList(false);
+  }, [contacts, preselectedContactId, preselectedContactName, preselectedContactRole]);
 
   // ─── 2. Fetch history when active chat changes ───────────────────────────
   useEffect(() => {

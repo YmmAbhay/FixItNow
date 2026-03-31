@@ -12,6 +12,7 @@ import com.fixitnow.backend.repository.ProviderProfileRepository;
 import com.fixitnow.backend.repository.ServiceRepository;
 import com.fixitnow.backend.repository.UserRepository;
 import com.fixitnow.backend.service.AdminService;
+import com.fixitnow.backend.service.NotificationService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -35,6 +36,7 @@ public class AdminController {
    
         private final ProviderProfileRepository providerProfileRepository;
         private final UserRepository userRepository;
+        private final NotificationService notificationService;
 
 
         
@@ -49,6 +51,15 @@ public class AdminController {
 
             profile.setApprovalStatus("APPROVED");
             providerProfileRepository.save(profile);
+
+            notificationService.notifyUser(
+                    user.getId(),
+                    null,
+                    "provider",
+                    "✅",
+                    "Your provider account has been approved by admin.",
+                    NotificationService.EVENT_SYSTEM,
+                    "/provider/dashboard");
 
             return ResponseEntity.ok("Provider approved successfully");
         }
@@ -66,6 +77,15 @@ public class AdminController {
 
             profile.setApprovalStatus("REJECTED");
             providerProfileRepository.save(profile);
+
+            notificationService.notifyUser(
+                    user.getId(),
+                    null,
+                    "provider",
+                    "❌",
+                    "Your provider account was rejected by admin. Please contact support.",
+                    NotificationService.EVENT_SYSTEM,
+                    "/provider/dashboard");
 
             return ResponseEntity.ok("Provider rejected successfully");
         }
@@ -115,14 +135,40 @@ public class AdminController {
         ServiceEntity service = serviceRepository.findById(id)
                 .orElseThrow();
         service.setStatus("APPROVED");
-        return serviceRepository.save(service);
+        ServiceEntity saved = serviceRepository.save(service);
+
+        if (saved.getProvider() != null) {
+                notificationService.notifyUser(
+                        saved.getProvider().getId(),
+                        null,
+                        "provider",
+                        "✅",
+                        "Your service \"" + saved.getCategory() + "\" has been approved by admin.",
+                        NotificationService.EVENT_SYSTEM,
+                        "/provider/services");
+        }
+
+        return saved;
         }
         @PutMapping("/services/{id}/suspend")
         public ServiceEntity suspendService(@PathVariable Long id) {
         ServiceEntity service = serviceRepository.findById(id)
                 .orElseThrow();
         service.setStatus("SUSPENDED");
-        return serviceRepository.save(service);
+        ServiceEntity saved = serviceRepository.save(service);
+
+        if (saved.getProvider() != null) {
+                notificationService.notifyUser(
+                        saved.getProvider().getId(),
+                        null,
+                        "provider",
+                        "⚠️",
+                        "Your service \"" + saved.getCategory() + "\" has been suspended by admin.",
+                        NotificationService.EVENT_SYSTEM,
+                        "/provider/services");
+        }
+
+        return saved;
         }
 
                 @PutMapping("/services/{id}/restore")
@@ -130,7 +176,20 @@ public class AdminController {
                 ServiceEntity service = serviceRepository.findById(id)
                                 .orElseThrow();
                 service.setStatus("APPROVED");
-                return serviceRepository.save(service);
+                ServiceEntity saved = serviceRepository.save(service);
+
+                if (saved.getProvider() != null) {
+                        notificationService.notifyUser(
+                                saved.getProvider().getId(),
+                                null,
+                                "provider",
+                                "✅",
+                                "Your service \"" + saved.getCategory() + "\" has been restored by admin.",
+                                NotificationService.EVENT_SYSTEM,
+                                "/provider/services");
+                }
+
+                return saved;
                 }
 
         @GetMapping("/users")
@@ -200,6 +259,16 @@ public class AdminController {
                         }
 
                         userRepository.save(user);
+
+                        notificationService.notifyUser(
+                                user.getId(),
+                                null,
+                                user.getRole() != null ? user.getRole().name().toLowerCase() : "user",
+                                "⚠️",
+                                "Your account has been suspended by admin.",
+                                NotificationService.EVENT_SYSTEM,
+                                "/login");
+
                         return ResponseEntity.ok("User suspended successfully");
                 }
 
@@ -228,6 +297,16 @@ public class AdminController {
                         }
 
                         userRepository.save(user);
+
+                        notificationService.notifyUser(
+                                user.getId(),
+                                null,
+                                user.getRole() != null ? user.getRole().name().toLowerCase() : "user",
+                                "✅",
+                                "Your account has been reactivated by admin.",
+                                NotificationService.EVENT_SYSTEM,
+                                user.getRole() != null ? "/" + user.getRole().name().toLowerCase() + "/dashboard" : "/login");
+
                         return ResponseEntity.ok("User activated successfully");
         }
 }

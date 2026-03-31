@@ -119,14 +119,24 @@ export const Layout = ({ children }) => {
     ? notifications
     : notifications.slice(0, 3);
 
-const handleNotificationClick = (notification) => {
-    // FIX: Just navigate! The handleBellClick already marked everything as read in the DB.
-    if (role === 'provider') {
+  const handleNotificationClick = (notification) => {
+    if (notification?.targetPath) {
+      const withHighlight = notification.bookingId
+        ? `${notification.targetPath}?highlight=${notification.bookingId}`
+        : notification.targetPath;
+      navigate(withHighlight);
+      setNotifOpen(false);
+      return;
+    }
+
+    if (role === "provider") {
       navigate(`/provider/bookings?highlight=${notification.bookingId}`);
+    } else if (role === "admin") {
+      navigate("/admin/dashboard");
     } else {
       navigate(`/customer/bookings?highlight=${notification.bookingId}`);
     }
-    setNotifOpen(false); // Close the dropdown
+    setNotifOpen(false);
   };
 
   const SidebarContent = () => (
@@ -347,7 +357,7 @@ const handleNotificationClick = (notification) => {
                               Old
                             </div>
 
-                            {showAllNotifications && visibleNotifications.filter((n) => (n) => Date.now() - n.createdAt >= ONE_DAY)
+                            {showAllNotifications && visibleNotifications.filter((n) => Date.now() - n.createdAt >= ONE_DAY)
                               .map((n) => (
                                 <div
                                   key={n.id}
