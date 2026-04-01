@@ -13,13 +13,14 @@ import com.fixitnow.backend.repository.ReviewRepository;
 import com.fixitnow.backend.repository.UserRepository;
 
 @Service
+@SuppressWarnings("null")
 public class ReviewService {
 
     @Autowired
     private ReviewRepository reviewRepository;
 
     @Autowired
-    private UserRepository userRepository; // 🔥 Inject this to find the names!
+    private UserRepository userRepository; //  Inject this to find the names!
 
     public Review createReview(Review review) {
         if (review.getRating() < 1 || review.getRating() > 5) {

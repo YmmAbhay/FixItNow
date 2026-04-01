@@ -8,6 +8,7 @@ import 'leaflet/dist/leaflet.css';
 // Auth Pages
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { HomePage } from './pages/HomePage';
 
 // Customer Pages
 import { CustomerDashboard } from './pages/customer/CustomerDashboard';
@@ -28,7 +29,7 @@ import { AdminUsersPage, AdminProvidersPage, AdminDisputesPage, PendingProviders
 import { AdminChatPage } from './pages/admin/AdminChatPage';
 
 
-const ProtectedRoute = ({ children, requiredRole, allowGuest = false }) => {
+const ProtectedRoute = ({ children, requiredRole, allowGuest = false, disallowLimited = false }) => {
   const { user, loading } = useAuth();
 
   if (loading) return <PageLoader />;
@@ -38,9 +39,17 @@ const ProtectedRoute = ({ children, requiredRole, allowGuest = false }) => {
     return <Navigate to="/login" replace />;
   }
 
+  if (!user && allowGuest) {
+    return children;
+  }
+
   // 2. If a user IS logged in, but has the wrong role, kick them to their own dashboard
   if (user && requiredRole && user.role !== requiredRole) {
     return <Navigate to={`/${user.role}/dashboard`} replace />;
+  }
+
+  if (user && disallowLimited && user.accessLimited) {
+    return <Navigate to={`/${user.role}/chat`} replace />;
   }
 
   // 3. Otherwise, render the page (works for guests and correct roles!)
@@ -64,24 +73,24 @@ const PublicRoute = ({ children }) => {
 const AppRoutes = () => (
   <Routes>
     {/* Public */}
-    <Route path="/" element={<Navigate to="/login" replace />} />
+    <Route path="/" element={<PublicRoute><HomePage /></PublicRoute>} />
     <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
     <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
     {/* Customer Routes */}
     <Route path="/customer/dashboard" element={<ProtectedRoute requiredRole="customer"><CustomerDashboard /></ProtectedRoute>} />
-    <Route path="/customer/services" element={<ProtectedRoute requiredRole="customer" allowGuest={true}><ServicesPage /></ProtectedRoute>} />
-    <Route path="/customer/services/:id" element={<ProtectedRoute requiredRole="customer" allowGuest={true}><ServiceDetailPage /></ProtectedRoute>} />
-    <Route path="/customer/bookings" element={<ProtectedRoute requiredRole="customer"><CustomerBookingsPage /></ProtectedRoute>} />
+    <Route path="/customer/services" element={<ProtectedRoute requiredRole="customer" allowGuest={true} disallowLimited={true}><ServicesPage /></ProtectedRoute>} />
+    <Route path="/customer/services/:id" element={<ProtectedRoute requiredRole="customer" disallowLimited={true}><ServiceDetailPage /></ProtectedRoute>} />
+    <Route path="/customer/bookings" element={<ProtectedRoute requiredRole="customer" disallowLimited={true}><CustomerBookingsPage /></ProtectedRoute>} />
     <Route path="/customer/chat" element={<ProtectedRoute requiredRole="customer"><ChatPage /></ProtectedRoute>} />
     <Route path="/customer/settings" element={<ProtectedRoute requiredRole="customer"><SettingsPage /></ProtectedRoute>} />
-    <Route path="/customer/payment" element={<ProtectedRoute requiredRole="customer"><PaymentPage /></ProtectedRoute>} />
+    <Route path="/customer/payment" element={<ProtectedRoute requiredRole="customer" disallowLimited={true}><PaymentPage /></ProtectedRoute>} />
 
     {/* Provider Routes */}
     <Route path="/provider/dashboard" element={<ProtectedRoute requiredRole="provider"><ProviderDashboard /></ProtectedRoute>} />
-    <Route path="/provider/services" element={<ProtectedRoute requiredRole="provider"><ProviderServicesPage /></ProtectedRoute>} />
-    <Route path="/provider/services/new" element={<ProtectedRoute requiredRole="provider"><ProviderServicesPage /></ProtectedRoute>} />
-    <Route path="/provider/bookings" element={<ProtectedRoute requiredRole="provider"><ProviderBookingsPage /></ProtectedRoute>} />
+    <Route path="/provider/services" element={<ProtectedRoute requiredRole="provider" disallowLimited={true}><ProviderServicesPage /></ProtectedRoute>} />
+    <Route path="/provider/services/new" element={<ProtectedRoute requiredRole="provider" disallowLimited={true}><ProviderServicesPage /></ProtectedRoute>} />
+    <Route path="/provider/bookings" element={<ProtectedRoute requiredRole="provider" disallowLimited={true}><ProviderBookingsPage /></ProtectedRoute>} />
     <Route path="/provider/chat" element={<ProtectedRoute requiredRole="provider"><ChatPage /></ProtectedRoute>} />
     <Route path="/provider/settings" element={<ProtectedRoute requiredRole="provider"><SettingsPage /></ProtectedRoute>} />
 
@@ -95,7 +104,7 @@ const AppRoutes = () => (
     <Route path="/admin/chat" element={<ProtectedRoute requiredRole="admin"><AdminChatPage /></ProtectedRoute>} />
 
     {/* Fallback */}
-    <Route path="*" element={<Navigate to="/login" replace />} />
+    <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
 );
 

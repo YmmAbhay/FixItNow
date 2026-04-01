@@ -56,19 +56,11 @@ export const PaymentPage = () => {
     
     setIsProcessing(true);
       
-    // 1. Try to send the notification, but DO NOT let it crash the app if it fails
+    // 1. Notify backend of payment so provider notification is generated server-side
     try {
-      await api.post('/notifications/create', {
-        userId: bookingData.providerId,
-        bookingId: bookingData.id,
-        role: "provider",
-        icon: "💰",
-        text: `Payment of ₹${bookingData.price} received for ${bookingData.service}!`,
-        viewed: false,
-        createdAt: Date.now()
-      });
+      await api.put(`/bookings/${bookingData.id}/payment`);
     } catch (err) {
-      console.warn("Backend blocked the notification, but proceeding with payment UI.");
+      console.warn("Payment notification failed, but proceeding with payment UI.");
     }
 
     // 2. GUARANTEED to run: Save the payment state locally

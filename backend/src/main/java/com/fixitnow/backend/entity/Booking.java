@@ -39,6 +39,15 @@ public class Booking {
     @Column(name = "booking_date")
     private String bookingDate;
 
+    @Column(name = "customer_location", length = 500)
+    private String customerLocation;
+
+    @Column(name = "customer_lat")
+    private Double customerLat;
+
+    @Column(name = "customer_lng")
+    private Double customerLng;
+
     public Booking() {
         this.createdAt = LocalDateTime.now();
     }
@@ -102,6 +111,30 @@ public class Booking {
 
     public void setBookingDate(String bookingDate) {
         this.bookingDate = bookingDate;
+    }
+
+    public String getCustomerLocation() {
+        return customerLocation;
+    }
+
+    public void setCustomerLocation(String customerLocation) {
+        this.customerLocation = customerLocation;
+    }
+
+    public Double getCustomerLat() {
+        return customerLat;
+    }
+
+    public void setCustomerLat(Double customerLat) {
+        this.customerLat = customerLat;
+    }
+
+    public Double getCustomerLng() {
+        return customerLng;
+    }
+
+    public void setCustomerLng(Double customerLng) {
+        this.customerLng = customerLng;
     }
     
     public String getStatus() {

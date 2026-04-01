@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import {
   Search,
   SlidersHorizontal,
@@ -10,13 +11,16 @@ import {
 } from "lucide-react";
 import {
   api,
-  SERVICE_CATEGORIES,
+  fetchServiceCatalog,
+  buildCategoryLookup,
   normalizeServiceCategoryFields,
 } from "../../utils/api";
 import { SectionHeader } from "../../components/common/index";
 import MapSelector from "../../components/common/MapSelector";
 
 export const ServicesPage = () => {
+  const { user } = useAuth();
+  const isGuest = !user;
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState("All");
   const [sortBy, setSortBy] = useState("rating");
@@ -24,9 +28,9 @@ export const ServicesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode] = useState("grid");
   const [services, setServices] = useState([]);
-  const [categories] = useState(SERVICE_CATEGORIES);
+  const [categories, setCategories] = useState([]);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
-  const [categoryLookup] = useState({
+  const [categoryLookup, setCategoryLookup] = useState({
     categoryIdToName: new Map(),
     subcategoryIdToName: new Map(),
   });
@@ -100,9 +104,11 @@ export const ServicesPage = () => {
 
         return {
           ...normalized,
-          rating: normalized.rating ?? 0,
-          reviews: normalized.reviews ?? 0,
-          verified: normalized.verified ?? false,
+          rating: Number(normalized.rating ?? 0),
+          reviews: Number(normalized.reviews ?? 0),
+          verified:
+            Boolean(normalized.verified) ||
+            String(normalized.status || "").toUpperCase() === "APPROVED",
           completedJobs: normalized.completedJobs ?? 0,
           image: normalized.image ?? getIcon(normalized.category),
           distance: distStr,
@@ -120,8 +126,16 @@ export const ServicesPage = () => {
 
   // 🔥 FIX 1: Initial load & GPS tracking
   useEffect(() => {
+    const loadCatalog = async () => {
+      const catalog = await fetchServiceCatalog();
+      setCategories(catalog);
+      setCategoryLookup(buildCategoryLookup(catalog));
+    };
+
+    loadCatalog();
+
     // 1. Instantly load services using the default mapLocation (Chennai)
-    fetchServices(mapLocation);
+    fetchServices(mapLocation, categoryLookup);
 
     // 2. Try to find the user's real GPS location
     if (navigator.geolocation) {
@@ -132,7 +146,7 @@ export const ServicesPage = () => {
             lng: position.coords.longitude,
           };
           setMapLocation(coords);
-          fetchServices(coords); // 3. Reload services centered on their REAL location!
+          fetchServices(coords, categoryLookup); // 3. Reload services centered on their REAL location!
         },
         (error) => {
           console.warn("Could not get location. Using default.", error);
@@ -141,6 +155,13 @@ export const ServicesPage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only once on page load
+
+  useEffect(() => {
+    if (mapLocation) {
+      fetchServices(mapLocation, categoryLookup);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryLookup]);
 
   const handleMapClick = (coords) => {
     setMapLocation(coords);
@@ -233,8 +254,18 @@ export const ServicesPage = () => {
     if (sortBy === "price_asc") list.sort((a, b) => a.price - b.price);
     else if (sortBy === "price_desc") list.sort((a, b) => b.price - a.price);
     else if (sortBy === "distance")
-      list.sort((a, b) => (a.distance || "").localeCompare(b.distance || ""));
-    else list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      list.sort(
+        (a, b) =>
+          (a.rawDistance ?? Number.MAX_SAFE_INTEGER) -
+          (b.rawDistance ?? Number.MAX_SAFE_INTEGER),
+      );
+    else
+      list.sort(
+        (a, b) =>
+          (b.rating || 0) - (a.rating || 0) ||
+          (b.reviews || 0) - (a.reviews || 0) ||
+          (a.price || 0) - (b.price || 0),
+      );
 
     return list;
   }, [services, search, selectedCat, sortBy, maxPrice, verifiedOnly]);
@@ -266,7 +297,25 @@ export const ServicesPage = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <>
+      {isGuest && (
+        <header className="sticky top-0 z-30 border-b border-dark-700/70 bg-dark-950/90 backdrop-blur">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <Link to="/" className="font-display font-bold text-2xl text-white">
+              FixItNow
+            </Link>
+            <div className="flex items-center gap-3">
+              <Link to="/login" className="btn-secondary py-2.5 px-5 text-sm">
+                Login
+              </Link>
+              <Link to="/register" className="btn-primary py-2.5 px-5 text-sm">
+                Register
+              </Link>
+            </div>
+          </div>
+        </header>
+      )}
+      <div className={`${isGuest ? "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" : ""} space-y-6 animate-fade-in`}>
       <SectionHeader
         title="Find Services"
         subtitle="Browse verified professionals near you"
@@ -344,17 +393,6 @@ export const ServicesPage = () => {
                   Verified Only
                 </span>
               </label>
-            </div>
-
-            {/* CLEAR ALL BUTTON */}
-            <div className="flex justify-end h-10">
-              <button
-                onClick={handleClearFilters}
-                className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold text-dark-400 hover:text-red-400 transition-colors bg-dark-900/50 hover:bg-red-500/10 rounded-lg border border-dark-700 hover:border-red-500/50 w-full sm:w-auto"
-              >
-                <X className="w-3 h-3" />
-                Clear All
-              </button>
             </div>
 
             {/* CLEAR ALL BUTTON */}
@@ -496,7 +534,8 @@ export const ServicesPage = () => {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 };
 

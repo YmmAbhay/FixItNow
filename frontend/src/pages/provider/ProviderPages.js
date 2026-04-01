@@ -16,7 +16,6 @@ import {
   Navigation,
 } from "lucide-react";
 import {
-  SERVICE_CATEGORIES,
   fetchServiceCatalog,
   buildCategoryLookup,
   normalizeServiceCategoryFields,
@@ -35,7 +34,7 @@ export const ProviderServicesPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [services, setServices] = useState([]);
-  const [categoryCatalog, setCategoryCatalog] = useState(SERVICE_CATEGORIES);
+  const [categoryCatalog, setCategoryCatalog] = useState([]);
   const [saving, setSaving] = useState(false);
   const [serviceError, setServiceError] = useState("");
   const [form, setForm] = useState({
@@ -659,11 +658,7 @@ export const ProviderBookingsPage = () => {
       } else if (endpoint === "reject") {
         await api.put(`/bookings/${id}/reject`);
       } else {
-        try {
-            await api.put(`/bookings/${id}/complete`);
-        } catch (apiErr) {
-            console.warn("Backend rejected completion, updating UI anyway for demo purposes.", apiErr);
-        }
+        await api.put(`/bookings/${id}/complete`);
       }
 
       const updatedBookings = bookings.map((b) =>
@@ -671,22 +666,6 @@ export const ProviderBookingsPage = () => {
       );
       setBookings(updatedBookings);
 
-      const targetBooking = bookings.find((b) => b.id === id);
-      if (targetBooking && targetBooking.customerId) {
-        try {
-            await api.post("/notifications/create", {
-              userId: targetBooking.customerId,
-              bookingId: id,
-              role: "customer",
-              icon: newStatus === "confirmed" ? "✅" : newStatus === "cancelled" ? "❌" : "⭐",
-              text: `Your ${targetBooking.service} booking was ${newStatus}!`,
-              viewed: false,
-              createdAt: Date.now(),
-            });
-        } catch (notifErr) {
-          console.warn("Could not send notification to customer", notifErr);
-        }
-      }
     } catch (err) {
       console.error(`Failed to update booking:`, err);
       setBookingToast({ message: "Failed to update booking status. Please try again.", type: "error" });
@@ -712,7 +691,7 @@ export const ProviderBookingsPage = () => {
       />
 
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {["all", "pending", "confirmed", "completed", "cancelled"].map(
+        {["all", "pending", "confirmed", "completed", "cancelled", "rejected"].map(
           (tab) => (
             <button
               key={tab}
@@ -805,7 +784,7 @@ export const ProviderBookingsPage = () => {
                   </button>
                   <button
                     onClick={() =>
-                      updateStatus(booking.id, "cancelled", "reject")
+                      updateStatus(booking.id, "rejected", "reject")
                     }
                     disabled={submittingId === booking.id}
                     className="flex-1 py-2.5 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-all font-medium text-sm disabled:opacity-40 flex items-center justify-center gap-1.5"

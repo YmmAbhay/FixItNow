@@ -5,6 +5,7 @@ import com.fixitnow.backend.dto.ServiceResponse;
 import com.fixitnow.backend.entity.ServiceEntity;
 import com.fixitnow.backend.entity.User;
 import com.fixitnow.backend.repository.ProviderProfileRepository;
+import com.fixitnow.backend.repository.ReviewRepository;
 import com.fixitnow.backend.repository.ServiceRepository;
 import com.fixitnow.backend.repository.UserRepository;
 import com.fixitnow.backend.repository.BookingRepository;
@@ -19,6 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/services")
 @CrossOrigin(origins = "http://localhost:3000")
+@SuppressWarnings("null")
 public class ServiceController {
 
     @Autowired
@@ -33,6 +35,44 @@ public class ServiceController {
     @Autowired
     private BookingRepository bookingRepository;
 
+    @Autowired
+    private ReviewRepository reviewRepository;
+
+    private ServiceResponse toServiceResponse(ServiceEntity service) {
+        ServiceResponse response = new ServiceResponse(service);
+        if (response.getProviderId() != null) {
+            Double averageRating = reviewRepository.getAverageRatingByProviderId(response.getProviderId());
+            response.setRating(averageRating == null ? 0.0 : averageRating);
+            response.setReviews(reviewRepository.countByProviderId(response.getProviderId()));
+        }
+        response.setVerified("APPROVED".equalsIgnoreCase(service.getStatus()));
+        return response;
+    }
+
+    private ServiceResponse toServiceResponse(ServiceEntity service, long completedJobs) {
+        ServiceResponse response = new ServiceResponse(service, completedJobs);
+        if (response.getProviderId() != null) {
+            Double averageRating = reviewRepository.getAverageRatingByProviderId(response.getProviderId());
+            response.setRating(averageRating == null ? 0.0 : averageRating);
+            response.setReviews(reviewRepository.countByProviderId(response.getProviderId()));
+        }
+        response.setVerified("APPROVED".equalsIgnoreCase(service.getStatus()));
+        return response;
+    }
+
+    private void ensureProviderServiceAccess(User provider) {
+        if (Boolean.FALSE.equals(provider.getActive())) {
+            throw new RuntimeException("Your account is suspended. Please wait for admin approval");
+        }
+
+        ProviderProfile profile = providerProfileRepository.findByUser(provider)
+                .orElseThrow(() -> new RuntimeException("Provider profile not found"));
+
+        if (!"APPROVED".equalsIgnoreCase(profile.getApprovalStatus())) {
+            throw new RuntimeException("Your provider account is pending admin approval");
+        }
+    }
+
     // 🔹 Provider adds service
     @PostMapping
     public ServiceEntity addService(@RequestBody ServiceRequest request,
@@ -46,6 +86,8 @@ public class ServiceController {
         if (provider.getRole() != Role.PROVIDER) {
             throw new RuntimeException("Only providers can add services");
         }
+
+        ensureProviderServiceAccess(provider);
 
         ServiceEntity service = new ServiceEntity();
         service.setCategory(request.getCategory());
@@ -82,13 +124,13 @@ public class ServiceController {
         List<ServiceEntity> services;
 
         if (location != null && !location.trim().isEmpty()) {
-            services = serviceRepository.findApprovedServicesByLocation(location.trim());
+            services = serviceRepository.findVisibleApprovedServicesByLocation(location.trim());
         } else {
-            services = serviceRepository.findByStatus("APPROVED");
+            services = serviceRepository.findVisibleApprovedServices();
         }
 
         return services.stream()
-                .map(ServiceResponse::new)
+            .map(this::toServiceResponse)
                 .toList();
     }
     // ADDED: Endpoint to fetch services based on map clicks/coordinates
@@ -99,11 +141,10 @@ public class ServiceController {
             @RequestParam Double lng,
             @RequestParam(defaultValue = "20.0") Double distance) { // 20km radius
         
-        return serviceRepository.findServicesNearLocation(lat, lng, distance)
-                .stream()
-                .filter(s -> "APPROVED".equals(s.getStatus()))
-                .map(ServiceResponse::new)
-                .toList();
+        return serviceRepository.findVisibleServicesNearLocation(lat, lng, distance)
+            .stream()
+            .map(this::toServiceResponse)
+            .toList();
     }
 
     // 🔹 Get by category
@@ -125,7 +166,7 @@ public class ServiceController {
         }
 
         // Pass the count into the new constructor
-        return new ServiceResponse(service, completedJobs);
+        return toServiceResponse(service, completedJobs);
     }
     // @PutMapping("/{id}/approve")
     // public ServiceEntity approveService(@PathVariable Long id) {
@@ -152,9 +193,11 @@ public class ServiceController {
         User provider = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        ensureProviderServiceAccess(provider);
+
         return serviceRepository.findByProviderId(provider.getId())
                 .stream()
-                .map(ServiceResponse::new)
+            .map(this::toServiceResponse)
                 .toList();
     }
 
@@ -165,6 +208,8 @@ public class ServiceController {
 
         User provider = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        ensureProviderServiceAccess(provider);
 
         ServiceEntity service = serviceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service not found"));
@@ -186,6 +231,8 @@ public class ServiceController {
 
         User provider = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        ensureProviderServiceAccess(provider);
 
         ServiceEntity service = serviceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service not found"));
@@ -210,7 +257,7 @@ public class ServiceController {
 
         return serviceRepository.findByStatus("PENDING")
                 .stream()
-                .map(ServiceResponse::new)
+            .map(this::toServiceResponse)
                 .toList();
     }
 

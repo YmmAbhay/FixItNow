@@ -1,9 +1,9 @@
 package com.fixitnow.backend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fixitnow.backend.entity.ProviderProfile;
 
 @Entity
 @Table(name = "users")
@@ -22,6 +22,9 @@ public class User {
 
     private String location;
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
     @Enumerated(EnumType.STRING)
     private Role role;
 
@@ -34,6 +37,31 @@ public class User {
 
     @Column(name = "longitude")
     private Double longitude;
+
+    @Column
+    private Boolean active = true;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "notif_booking_updates")
+    private Boolean notifBookingUpdates = true;
+
+    @Column(name = "notif_chat_messages")
+    private Boolean notifChatMessages = true;
+
+    @Column(name = "notif_promotions")
+    private Boolean notifPromotions = false;
+
+    @Column(name = "notif_sms")
+    private Boolean notifSms = true;
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 
     public Long getId() {
         return id;
@@ -71,6 +99,14 @@ public class User {
         this.location = location;
     }
 
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
     public Role getRole() {
         return role;
     }
@@ -97,5 +133,53 @@ public class User {
 
     public void setLongitude(Double longitude) {
         this.longitude = longitude;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Boolean getNotifBookingUpdates() {
+        return notifBookingUpdates;
+    }
+
+    public void setNotifBookingUpdates(Boolean notifBookingUpdates) {
+        this.notifBookingUpdates = notifBookingUpdates;
+    }
+
+    public Boolean getNotifChatMessages() {
+        return notifChatMessages;
+    }
+
+    public void setNotifChatMessages(Boolean notifChatMessages) {
+        this.notifChatMessages = notifChatMessages;
+    }
+
+    public Boolean getNotifPromotions() {
+        return notifPromotions;
+    }
+
+    public void setNotifPromotions(Boolean notifPromotions) {
+        this.notifPromotions = notifPromotions;
+    }
+
+    public Boolean getNotifSms() {
+        return notifSms;
+    }
+
+    public void setNotifSms(Boolean notifSms) {
+        this.notifSms = notifSms;
     }
 }

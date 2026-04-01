@@ -11,4 +11,8 @@ import com.fixitnow.backend.entity.Report;
 public interface ReportRepository extends JpaRepository<Report, Long> {
 
     List<Report> findAllByOrderByCreatedAtDesc();
+
+    List<Report> findByReportedByAndTargetTypeIgnoreCaseOrderByCreatedAtDesc(Long reportedBy, String targetType);
+
+    boolean existsByReportedByAndTargetTypeIgnoreCaseAndTargetId(Long reportedBy, String targetType, Long targetId);
 }

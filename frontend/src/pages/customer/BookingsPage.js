@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Calendar, Clock, Star, MessageCircle, X, Loader2, Flag } from "lucide-react";
-import { MOCK_SERVICES, api } from "../../utils/api";
+import { api } from "../../utils/api";
 import {
   StatusBadge,
   Modal,
@@ -28,12 +28,30 @@ export const CustomerBookingsPage = () => {
   const [locallyPaid, setLocallyPaid] = useState({});
   const [cancelToast, setCancelToast] = useState(null);
 
+  const iconByCategory = {
+    electrical: "⚡",
+    plumbing: "🔧",
+    carpentry: "🪚",
+    painting: "🎨",
+    cleaning: "🧹",
+    appliance: "📺",
+    security: "🔒",
+    ac: "❄️",
+  };
+
+  const resolveServiceIcon = (serviceName) => {
+    const value = (serviceName || "").toLowerCase();
+    const matchedKey = Object.keys(iconByCategory).find((key) => value.includes(key));
+    return matchedKey ? iconByCategory[matchedKey] : "🔧";
+  };
+
   const tabs = [
     { id: "all", label: "All" },
     { id: "pending", label: "Pending" },
     { id: "confirmed", label: "Confirmed" },
     { id: "completed", label: "Completed" },
     { id: "cancelled", label: "Cancelled" },
+    { id: "rejected", label: "Rejected" },
   ];
 
   useEffect(() => {
@@ -96,10 +114,25 @@ export const CustomerBookingsPage = () => {
           return acc;
         }, {});
 
+        let reportedMap = {};
+        try {
+          const reportsRes = await api.get("/reports/mine?targetType=booking");
+          const reports = Array.isArray(reportsRes.data) ? reportsRes.data : [];
+          reportedMap = reports.reduce((acc, report) => {
+            if (report?.targetId != null) {
+              acc[report.targetId] = true;
+            }
+            return acc;
+          }, {});
+        } catch (reportErr) {
+          console.warn("Failed to load reported booking state", reportErr);
+        }
+
         if (isMounted) {
           formatted.sort((a, b) => new Date(b.date) - new Date(a.date));
           setBookings(formatted);
           setSubmitted(submittedMap);
+          setReportedBookings(reportedMap);
           
           // 🔥 CHECK LOCAL STORAGE HERE
           const paidData = JSON.parse(localStorage.getItem("paidBookings")) || {};
@@ -179,7 +212,7 @@ export const CustomerBookingsPage = () => {
       ) : (
         <div className="space-y-4">
           {filtered.map((booking) => {
-            const serviceIcon = MOCK_SERVICES.find((s) => booking.service?.toLowerCase().includes(s.category.toLowerCase()))?.image || "🔧";
+            const serviceIcon = resolveServiceIcon(booking.service);
             return (
               <div key={booking.id} className="bg-dark-800 border border-dark-700 rounded-2xl p-5 hover:border-dark-600 transition-all">
                 <div className="flex items-start gap-4">

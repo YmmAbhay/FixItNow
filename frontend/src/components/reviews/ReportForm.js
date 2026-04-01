@@ -54,9 +54,18 @@ export const ReportForm = ({ booking, onSuccess, onCancel }) => {
 
     } catch (err) {
       console.error('Report submission failed:', err);
+      const backendPayload = err?.response?.data;
       const msg =
-        err?.response?.data?.message ||
+        (typeof backendPayload === 'string' && backendPayload) ||
+        backendPayload?.message ||
         'Failed to submit report. Please try again.';
+
+      if (err?.response?.status === 409) {
+        setToast({ message: msg, type: 'success' });
+        onSuccess && onSuccess();
+        return;
+      }
+
       setError(msg);
       setToast({ message: msg, type: 'error' });
     } finally {

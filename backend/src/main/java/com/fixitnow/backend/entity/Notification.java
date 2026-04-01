@@ -17,6 +17,11 @@ public class Notification {
     private Long bookingId;
 
     private String role;
+    @Column(name = "event_type")
+    private String eventType;
+
+    @Column(name = "target_path")
+    private String targetPath;
     private String icon;
     private String text;
     private boolean viewed;
@@ -35,6 +40,10 @@ public class Notification {
     public void setBookingId(Long bookingId) { this.bookingId = bookingId; }
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+    public String getEventType() { return eventType; }
+    public void setEventType(String eventType) { this.eventType = eventType; }
+    public String getTargetPath() { return targetPath; }
+    public void setTargetPath(String targetPath) { this.targetPath = targetPath; }
     public String getIcon() { return icon; }
     public void setIcon(String icon) { this.icon = icon; }
     public String getText() { return text; }

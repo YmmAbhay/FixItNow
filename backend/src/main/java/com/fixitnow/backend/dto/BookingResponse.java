@@ -39,9 +39,16 @@ public class BookingResponse {
         if (customer != null) {
             this.customerId = customer.getId();
             this.customerName = customer.getName();
-            this.customerLocation = customer.getLocation();
-            this.customerLat = customer.getLatitude();   // 🔥 ADD THIS
-            this.customerLng = customer.getLongitude();
+            this.customerLocation = booking.getCustomerLocation() != null
+                && !booking.getCustomerLocation().isBlank()
+                    ? booking.getCustomerLocation()
+                    : customer.getLocation();
+            this.customerLat = booking.getCustomerLat() != null
+                ? booking.getCustomerLat()
+                : customer.getLatitude();
+            this.customerLng = booking.getCustomerLng() != null
+                ? booking.getCustomerLng()
+                : customer.getLongitude();
         }
 
         User provider = booking.getProvider();
